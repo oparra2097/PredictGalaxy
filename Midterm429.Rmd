@@ -1,0 +1,854 @@
+
+Midterm 
+Oscar Parra Shanshan Li
+Big Data Econometrics 
+04.28.22
+
+ [Step 1](Step1)
+
+[Why not impute rerun_ID, run_ID discussion]
+[Comment on distribution of Varables](Comment) 
+
+ [Step 2](Step2)
+
+ [Feature selection using Lasso](Lasso)
+ [Select the features for all the models](Lasso)
+ [Logit](Logit) 
+ [LDA](lda) 
+ [QDA](qda) 
+ [NB](nb)  
+ [KNN](knn)
+
+ [Comment on multi-collinearity](collinearity)
+ [Estimate errors using bootstrap](bootstrap)
+
+ k-fold cross validation setup
+ [Logit CV](Logitcv) 
+ [LDA CV](ldacv) 
+ [QDA CV](qdacv) 
+ [NB CV](nbcv)  
+ [KNN CV](knncv)
+
+ [Explain models differences](various)
+
+ [Step 3](Step3)
+ Compare performance using ROC and AUC measures
+ [Logit performance](Logitp) 
+ [LDA performance](ldap) 
+ [QDA performance](qdap) 
+ [NB performance](nbp)  
+ [KNN performance](knnp)
+
+ [Step 4](Step4)
+
+ [Treatments of test data](testD)
+ [Identify which model is selected using x-validation](Identify)
+ [Rebuild the model using full train dataa](Rebuild)
+ [Submit results](Submit)
+
+
+
+```{r}
+  
+library(dplyr)
+library(caret)
+library(glmnet)
+library(naivebayes)
+library(ggplot2)
+library(MASS)
+library(mltools)
+library(data.table)
+library(class)
+
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+
+cat("\f") 
+
+packages <- c("tidyverse", "readxl", "data.table", "utils", "mltools", "ggplot2","Hmisc", "ISLR2", "caret", "boot", "randomForest", "boot", "glmnet", "e1071", "class", "pROC", "ggplot2") 
+for (i in 1:length(packages)) {
+  if (!packages[i] %in% rownames(installed.packages())) {
+    install.packages(packages[i])
+  }
+  library(packages[i], character.only = TRUE)
+}
+rm(packages)
+
+tf = read.csv("G:\\My Drive\\Big Data\\midterm\\star_classification.csv")
+
+
+```
+
+-----------------Step 1---------------------------------------------------------------------------------
+The data consists of 100,000 observations of space taken by the SDSS (Sloan Digital Sky Survey). Every observation is described by 17 feature columns and 1 class column which identifies it to be either a tf, galaxy or quasar.
+
+obj_ID = Object Identifier, the unique value that identifies the object in the image catalog used by the CAS
+alpha = Right Ascension angle (at J2000 epoch)
+delta = Declination angle (at J2000 epoch)
+u = Ultraviolet filter in the photometric system
+g = Green filter in the photometric system
+r = Red filter in the photometric system
+i = Near Infrared filter in the photometric system
+z = Infrared filter in the photometric system
+run_ID = Run Number used to identify the specific scan
+rereun_ID = Rerun Number to specify how the image was processed
+cam_col = Camera column to identify the scanline within the run
+field_ID = Field number to identify each field
+spec_obj_ID = Unique ID used for optical spectroscopic objects (this means that 2 different observations with the same spec_obj_ID must share the output class)
+class = object class (galaxy, tf or quasar object)
+redshift = redshift value based on the increase in wavelength
+plate = plate ID, identifies each plate in SDSS
+MJD = Modified Julian Date, used to indicate when a given piece of SDSS data was taken
+fiber_ID = fiber ID that identifies the fiber that pointed the light at the focal plane in each observation
+
+Visualizizing the data
+
+In this data set, we first eliminated quasar from the feature class, and conducted our model with only galaxy and tf. By exploring the data without quasar, we can see from the histogram summaries that alpha, delta, r, i, run_ID, MJD are distributed close to normal. We will further our selection of features into models by verifying from Lasso for feature selection.
+histogram on the right
+
+```{r}
+library(skimr)
+skim(tf)
+
+```
+
+
+```{r}
+
+#https://community.rstudio.com/t/correlation-method-in-rquery-cormat/43087
+rquery.cormat<- function(x,
+                        type=c('lower', 'upper', 'full', 'flatten'),
+                        graph=TRUE,
+                        graphType=c("correlogram", "heatmap"),
+                        col=NULL, ...)
+{
+  library(corrplot)
+  # Helper functions
+  #+++++++++++++++++
+  # Compute the matrix of correlation p-values
+  cor.pmat <- function(x, ...) {
+    mat <- as.matrix(x)
+    n <- ncol(mat)
+    p.mat<- matrix(NA, n, n)
+    diag(p.mat) <- 0
+    for (i in 1:(n - 1)) {
+      for (j in (i + 1):n) {
+        tmp <- cor.test(mat[, i], mat[, j], ...)
+        p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+      }
+    }
+    colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+    p.mat
+  }
+  # Get lower triangle of the matrix
+  getLower.tri<-function(mat){
+    upper<-mat
+    upper[upper.tri(mat)]<-""
+    mat<-as.data.frame(upper)
+    mat
+  }
+  # Get upper triangle of the matrix
+  getUpper.tri<-function(mat){
+    lt<-mat
+    lt[lower.tri(mat)]<-""
+    mat<-as.data.frame(lt)
+    mat
+  }
+  # Get flatten matrix
+  flattenCorrMatrix <- function(cormat, pmat) {
+    ut <- upper.tri(cormat)
+    data.frame(
+      row = rownames(cormat)[row(cormat)[ut]],
+      column = rownames(cormat)[col(cormat)[ut]],
+      cor  =(cormat)[ut],
+      p = pmat[ut]
+    )
+  }
+  # Define color
+  if (is.null(col)) {
+    col <- colorRampPalette(
+      c("#67001F", "#B2182B", "#D6604D", "#F4A582",
+        "#FDDBC7", "#FFFFFF", "#D1E5F0", "#92C5DE", 
+        "#4393C3", "#2166AC", "#053061"))(200)
+    col<-rev(col)
+  }
+  
+  # Correlation matrix
+  cormat<-signif(cor(x, use = "complete.obs", ...),2)
+  pmat<-signif(cor.pmat(x, ...),2)
+  # Reorder correlation matrix
+  ord<-corrMatOrder(cormat, order="hclust")
+  cormat<-cormat[ord, ord]
+  pmat<-pmat[ord, ord]
+  # Replace correlation coeff by symbols
+  sym<-symnum(cormat, abbr.colnames=FALSE)
+  # Correlogram
+  if(graph & graphType[1]=="correlogram"){
+    corrplot(cormat, type=ifelse(type[1]=="flatten", "lower", type[1]),
+             tl.col="black", tl.srt=45,col=col,...)
+  }
+  else if(graphType[1]=="heatmap")
+    heatmap(cormat, col=col, symm=TRUE)
+  # Get lower/upper triangle
+  if(type[1]=="lower"){
+    cormat<-getLower.tri(cormat)
+    pmat<-getLower.tri(pmat)
+  }
+  else if(type[1]=="upper"){
+    cormat<-getUpper.tri(cormat)
+    pmat<-getUpper.tri(pmat)
+    sym=t(sym)
+  }
+  else if(type[1]=="flatten"){
+    cormat<-flattenCorrMatrix(cormat, pmat)
+    pmat=NULL
+    sym=NULL
+  }
+  list(r=cormat, p=pmat, sym=sym)
+}
+```
+
+
+After importing the data into R and classifying it as "tf" we then look for outliers in the dataset as we assume that our data will be affected. We create another matrix that will contain the new values in order to continue our problem set. I removed the rerun_ID from the matrix because it was a constant and would skew the models/predictions. 
+```{r}
+library(corrplot)
+library(tidyverse)
+subset = subset(tf, tf$class == "QSO")
+tf1 = anti_join(tf, subset)
+
+tf1$rerun_ID = NULL 
+
+cor(tf1[,-c(13)])
+
+rquery.cormat(tf1[,-c(13)])
+#It appears that tf has more observations than QSO so may be better to us it 
+
+#removing outliers
+boxplot(tf1[,c("u", "g", "z")])
+outlier <- 79544
+tf1 <- tf1[!(row.names(tf1) %in% outlier),]
+```
+
+```{r}
+tf1 = tf1 %>%
+  mutate(class_STAR = case_when( class == "STAR" ~ 1, TRUE ~ 0))
+tf1$class = as.factor(tf1$class)
+contrasts(tf1$class)
+```
+
+
+
+
+ # data summary
+```{r}
+attach(tf1) 
+str(tf1)
+```
+
+
+
+We Created a train (90%) and a test (10%) of the data
+Both of these after multiple iterations found no significance
+```{r}
+
+
+trainIndex <- createDataPartition(y = tf1$class, p= 0.9, list = FALSE)
+ #90%  train8 data
+train <- tf1[trainIndex,] 
+ #10% testing data
+test <- tf1[-trainIndex,]
+
+```
+
+
+
+
+----------------------------Step 2-------------------------------------------------------
+Split the 90% of the train8 set to train1 (80%) test1(20%). Some of the drawbacks of splitting data into small segments is that are results can start being affected by the amount of diluting. 
+```{r}
+trainIndex2 <- createDataPartition(y = train$class, p= 0.8, list = FALSE)
+
+# 80%  train8 data
+train8 <- train[trainIndex2,] 
+# 20% testing data
+test2 <- train[-trainIndex2,]
+
+options(scipen = 99999) #converts the values to whole numbers
+```
+
+
+Feature selection using Lasso
+We are using 10-fold cross validation to check the Lasso selections  
+Define predictor matrix
+
+We plot the coefficients with the log of Lambda for the predictors
+```{r}
+par(mfrow = c(1,1))
+par(mar = c(5,4,4,2))
+x <- model.matrix(class ~ .-class_STAR, data = train8)[, -1]#define predictor matrix
+y <- train8$class
+
+grid <- 10^seq(10, -2, length = 100)
+model.lasso <- glmnet(x, y, alpha = 1, family = "binomial", lambda = grid)
+
+
+plot(model.lasso, xvar = "lambda", label = TRUE)
+```
+
+
+```{r}
+set.seed(1)
+cv.out = cv.glmnet(x, y, family = "binomial", type.measure = "class" , alpha = 1)
+
+
+plot(cv.out)
+bestlam = cv.out$lambda.min
+
+out = glmnet(x, y, alpha = 1, lambda = grid, family = "binomial")
+lasso.coef = predict(out, type = "coefficients", s = bestlam)[1:16,]
+
+lasso.coef[lasso.coef !=0]
+bestlam
+log(bestlam)
+```
+
+The results from the Lasso signify that at the lambda value of 0.00003076958 which gives the lowest mean cross-validation error, the variables i, redshift, and MJD remain the only variables not constrained to 0.After revisiting the corelation matrix, we did encounter that z, r, and i each have perfect positive correlation. 
+
+
+
+
+<div id="Logit"></div>
+Step2
+
+Regressions without k-fold cross validation
+<div id="Logit"></div>
+**Model 1 : Logistic Regression
+  
+```{r}
+logit.fit <- train(class ~ i + redshift + MJD - class_STAR, 
+                   data = train8, 
+                   method = "glm", 
+                   family = "binomial",
+                   preProcess = c("center", "scale"),
+                   tuneLength = 10)
+logit.fit
+```
+
+
+**Model 2 : Linear Discriminant Analysis (LDA)
+  
+```{r}
+lda_fit <- train(class ~ i + redshift + MJD - class_STAR,
+                 data = train8, 
+                 method = "lda",
+                 family = "binomial",
+                 metric = "Accuracy",
+                 preProcess = c("center", "scale"))
+
+lda_fit
+```
+
+
+
+<div id="qda"></div>
+Model 3 : Quadratic Discriminant Analysis (QDA)
+
+```{r}
+qda_fit <- train(class ~i + redshift + MJD - class_STAR, 
+                 data = train8, 
+                 family = "binomial",
+                 method = "qda",
+                 preProcess = c("center", "scale"),
+                 tuneLength = 10
+)
+
+qda_fit
+```
+
+Accuracy = 0.9925117
+
+Model 4 : Naive Bayes (NB)
+```{r}
+nb_fit <- train(class ~ i + redshift + MJD - class_STAR, 
+                data = train8,
+                method = "naive_bayes",
+                preProcess = c("center", "scale"),
+                  tuneLength = 10)
+
+nb_fit
+```
+
+
+Model 5 :  K-Nearest Neighbors (KNN) cannot run as a "family = binomial" because the knn function assumes it is.
+  
+```{r}
+library(base)
+t8 =  train8[,]
+t8$class = as.numeric(t8$class)
+t8 = subset(t8, select = -c(class, class_STAR))
+t2 =  test2[,]
+t2$class = as.numeric(t2$class)
+t2 = subset(t2, select = -c(class,class_STAR))
+scale.train8 <- scale(t8[,])
+scale.test2 <- scale(t2[,])
+train.X <- scale.train8[,c("alpha", "u", "r","i", "z", "redshift", "MJD")]  #predictors
+test.X <- scale.test2[,c("alpha", "u", "r","i", "z", "redshift", "MJD")] 
+train.class <- train8$class_STAR
+train.class <- train8$class_STAR  #vector of the training response variable
+
+set.seed(6496)
+knn.pred <- knn(train.X, test.X, train.class, k = 3)
+table(knn.pred, test2$class_STAR)
+paste("Accuracy = ", 100*((10502 + 3714)/(10502 + 3714 + 140 + 231)))
+mean(test2$class_STAR != knn.pred)
+table(knn.pred, test2$class)
+```
+
+
+
+## comparing results for 80/20
+#### Logistic Model Accuracy 0.9932272 
+#### LDA Model Accuracy 0.9196165 
+#### QDA Model Accuracy 0.9926608
+#### Naive Bayes Model Accuracy 0.9911222  
+#### KNN Model Accuracy 0.9745663
+
+ ##bootstrap 
+ bootstrap 
+ Estimate errors using bootstrap
+
+```{r}
+library(tidyverse)
+library(mosaic)
+library(boot)
+##bootstrap of logit model
+index = test2
+boot.logit <- function(data, index){
+  coef(glm(class~ i + redshift + MJD, data = train8, family= "binomial", subset = index))
+}
+boot(test2, boot.logit, R=10)
+```
+## bootstrap of LDA model
+```{r}
+
+index = test2
+boot.lda <- function(data, index){
+  coef(lda(class~ i + redshift + MJD, data = train, subset = index))
+}
+boot(train8, boot.lda, R = 10)
+
+index = test2 ## I didn't get this part?
+boot.logit <- function(data, index){
+  logit.fit<- glm(class~ i + redshift + MJD, data = train, family = binomial, subset = index)       
+  stats <- coef(summary(logit.fit)) [,"Std. Error"]
+  return(stats)}
+bootstrap <- boot(train8, boot.logit, R=10)
+bootstrap
+```
+
+QDA Boot
+```{r}
+boot.qda <- function(data, index){ 
+  qda(class_STAR ~  i + redshift + MJD, data = data, subset = index, CV = FALSE)$means
+}
+
+boot(train, statistic = boot.qda, R = 10)
+
+qda(class_STAR ~ i + redshift + MJD, data = train8)$means
+```
+
+# Boots for NB  
+```{r}
+boot.nb <- function(data, index){
+   naiveBayes(factor(class, levels = c(0,1), labels = c("GALAXY", "STAR")) ~   i +  redshift + MJD, data = train8, subset = index)$apriori
+}
+
+boot(train, statistic = boot.nb, R = 10)
+
+```
+The bootstrap method is used to estimate quantities within a population by taking average estimates from multiple small data samples. It gives straightforward estimations such as standard error and confidence intervals for complicated estimators such as distribution and correlation coefficients. In our models, the bootstrap method was able to reduce standard error the chosen variables, besides redshift. Redshift had the largest negative coefficients and standard error in the 40s, making the variable is a questionable predictor for our purposes.
+
+ Regressions with k-fold cross validation
+ I choose 10-fold cross-validation because it is popular to choose 5 or 10 folds
+
+ to add the 10-fold cross-validation I create the argument trctrl useing trainControl from caret, In our case the Control will be cross-validation with k=10
+
+
+ Model 1 : Logistic Regression With CV
+```{r}
+train8$class_STAR = as.factor(train8$class_STAR)
+```
+
+
+ The Control  for the 10-fold CV
+```{r}
+trctrl <- trainControl(method = "cv", number = 10 )
+train8$obj_ID = NULL
+```
+
+ The regression with the Control
+```{r}
+logit.cv<- train(class ~i + redshift + MJD - class_STAR, 
+                  data = train, 
+                  family = "binomial",
+                  method = "glm",
+                  trControl=trctrl, #Applying the Control 
+                  preProcess = c("center", "scale"),
+                  tuneLength = 10
+)
+logit.cv
+```
+
+
+Accuracy   Kappa    
+0.9934463  0.9833581
+
+  Model 2 : LDA with CV
+
+The Control 
+```{r}
+trctrl <- trainControl(method = "cv", number = 10 )
+```
+
+
+ The regression with the Control
+```{r}
+lda.cv <- train(class ~ i + redshift + MJD - class_STAR,
+                data = train, 
+                method = "lda",
+                family = "binomial",
+                metric = "Accuracy",
+                trControl = trctrl,   #Applying the Control
+                preProcess = c("center", "scale")
+)
+
+lda.cv 
+```
+
+
+Accuracy   Kappa    
+0.9211913  0.7924963
+  Model 3 : QDA with CV
+
+The Control for the 10-fold CV 
+```{r}
+trctrl <- trainControl(method = "cv", number = 10 )
+```
+
+
+ The regression with the Control
+```{r}
+qda.cv <- train(class ~i + redshift + MJD - class_STAR, 
+                data = train, 
+                method = "qda",
+                family = "binomial",
+                trControl=trctrl,  #Applying the Control
+                preProcess = c("center", "scale"),
+                tuneLength = 10)
+
+
+qda.cv
+```
+
+
+Accuracy  Kappa    
+0.992747  0.9815426
+  Model 4 : Naive Bayes with CV
+
+The Control for the 10-fold CV 
+```{r}
+trctrl <- trainControl(method = "cv", number = 10 )
+```
+
+
+ The regression with the Control
+```{r}
+nb.cv <- train(class ~i + redshift + MJD - class_STAR, data = train, 
+               method = "naive_bayes",
+               trControl=trctrl,  #Applying the CV
+               preProcess = c("center", "scale"),
+               tuneLength = 10
+)
+
+nb.cv
+```
+
+
+usekernel  Accuracy   Kappa    
+FALSE      0.9904437  0.9756893
+TRUE      0.9908550  0.9768201
+ 
+ 
+  Model 5 : KNN with CV
+
+The Control for the 10-fold CV 
+```{r}
+trctrl <- trainControl(method = "cv", number = 10 )
+```
+
+
+ The regression with the Control
+```{r}
+knn.cv <- train(class ~ i + redshift + MJD - class_STAR, 
+                data = train, 
+                method = "knn",
+                trControl=trctrl)
+
+knn.cv
+
+```
+
+
+Model 1: Logit ROC
+
+```{r}
+preds_logit <- bind_cols(
+  predict(logit.cv, newdata = test2, type = "prob"),
+  Predicted = predict(logit.cv, newdata = test2, type = "raw"),
+  Actual = test2$class
+)
+confusionMatrix(preds_logit$Predicted, reference = preds_logit$Actual)
+```
+ 
+  Model 2 : LDA ROC
+
+```{r}
+preds_xgb <- bind_cols(
+  predict(lda.cv, newdata = test2, type = "prob"),
+  Predicted = predict(lda.cv, newdata = test2, type = "raw"),
+  Actual = test2$class
+)
+```
+
+ Works
+```{r}
+confusionMatrix(preds_xgb$Predicted, reference = preds_xgb$Actual)
+```
+
+
+
+  Model 3:  QDA ROC
+
+```{r}
+preds_qda <- bind_cols(
+  predict(qda.cv, newdata = test2, type = "prob"),
+  Predicted = predict(qda.cv, newdata = test2, type = "raw"),
+  Actual = test2$class)
+
+confusionMatrix(preds_qda$Predicted, reference = preds_qda$Actual)
+```
+
+
+Model 4 :Naive Bayes ROC
+
+```{r}
+preds_nb <- bind_cols(
+  predict(nb.cv, newdata = test2, type = "prob"),
+  Predicted = predict(nb.cv, newdata = test2, type = "raw"),
+  Actual = test2$class
+)
+
+confusionMatrix(preds_nb$Predicted, reference = preds_nb$Actual)
+```
+
+
+
+
+  Model 5: KNN  ROC
+
+```{r}
+preds_knn <- bind_cols(
+  predict(knn.cv, newdata = test2, type = "prob"),
+  Predicted = predict(knn.cv, newdata = test2, type = "raw"),
+  Actual = test2$class
+)
+
+confusionMatrix(preds_knn$Predicted, reference = preds_knn$Actual)
+```
+
+# compare ROC
+```{r}
+# Logic.roc
+logit.roc <- roc(class, preds_logit)
+plot(logit.roc, type = "l", col = "red")
+
+```
+
+```{r}
+# LDA ROC
+LDA.roc <- roc(class, factor(preds_xgb, levels = c(0, 1), labels = c("GALAXY", "STAR"), ordered = T))
+plot(LDA.roc, col = "black")
+
+```
+
+```{r}
+# QDA ROC
+QDA.roc <- roc(class, factor(preds_qda, levels = c(0, 1), labels = c("GALAXY", "STAR"), ordered = T))
+plot(QDA.roc, col = "yellow")
+```
+
+```{r}
+# NB ROC
+NB.roc <- roc(class, factor(preds_nb, levels = c(0, 1), labels = c("GALAXY", "STAR"), ordered = T))
+plot(NB.roc, col = "blue")
+
+```
+
+```{r}
+# KNN ROC
+KNN.roc <- roc(class, factor(preds_knn, levels = c(0, 1), labels = c("GALAXY", "STAR"), ordered = T))
+plot(KNN.roc, col = "brown")
+```
+
+```{r}
+roc.test(logit.roc, KNN.roc)
+## 
+##  DeLong's test for two correlated ROC curves
+## 
+## data:  logit.roc and KNN.roc
+## Z = , 
+## p-value < 
+## alternative hypothesis: true difference in AUC is not equal to 0
+## 95 percent confidence interval:
+## 
+## AUC of roc1 AUC of roc2 
+##   
+roc.test(LDA.roc, QDA.roc)
+## 
+##  DeLong's test for two correlated ROC curves
+## 
+## Z = 
+## p-value < 
+## alternative hypothesis: true difference in AUC is not equal to 0
+## 95 percent confidence interval:
+##  
+## sample estimates:
+## AUC of roc1 AUC of roc2 :
+##   
+roc.test(logit.roc, QDA.roc)
+## 
+##  DeLong's test for two correlated ROC curves
+## Z = 
+## p-value < 
+## alternative hypothesis: true difference in AUC is not equal to 0
+## 95 percent confidence interval:
+##  
+## sample estimates:
+## AUC of roc1 AUC of roc2 :
+
+
+
+## logt ROC Area under the curve:
+auc(logit.roc) 
+ci(logit.roc)  #95 percent confidence interval:
+
+## LDA ROC Area under the curve: 
+auc(LDA.roc)  
+ci(LDA.roc)  #95 percent confidence interval: 
+
+## QDA ROC Area under the curve: 
+auc(QDA.roc)   
+ci(QDA.roc)    #95 percent confidence interval:
+
+## NB ROC Area under the curve: 
+auc(NB.roc)    
+ci(NB.roc)   #95 percent confidence interval:  
+## KNN ROC Area under the curve: 
+auc(KNN.roc)   
+ci(KNN.roc)   #95 percent confidence interval: 
+
+
+#According to the data above and the ROC curve comparison, the best model for this dataset's classification would be the Logit model with 10-fold approach. The results from the Logit also produced the highest AUC with the smallest confidence intervals.
+```
+
+
+Determining the Covariance of the variables to discuss the multicollinearity.
+```{r}
+library(stats)
+train1 =  train[,]
+train1$class = as.numeric(train1$class)
+train1 = subset(train, select = -c(class, class_STAR,obj_ID, alpha, delta, u, g, r, z, run_ID, cam_col,spec_obj_ID, field_ID,plate, fiber_ID))
+cov(train1)
+cor(train1)
+```
+ The highest colinearity that we have with the variables that we selected is between i and MJD. Meaning that these variables are highly correlated and interact with each other that they affect each other. Besides those, collinearity is also between i/ redshift, and redshift/MJD with their correlation coefficients over 0.5, which makes them correlated to a medium to high degree. This shows that feature selection should be done before the training models. 
+ 
+## comparing results for 80/20
+#### Logistic Model Accuracy 0.9932272 
+#### LDA Model Accuracy 0.9196165 
+#### QDA Model Accuracy 0.9926608
+#### Naive Bayes Model Accuracy 0.9911222  
+#### KNN Model Accuracy 0.9745663
+
+## Comparing models 10-fold
+#### Logistic Model Accuracy 0.9933502   
+#### LDA Model Accuracy 0.9197642  
+#### QDA Model Accuracy 0.9927058  
+#### NB Model Accuracy 0.9909646
+#### KNN Model Accuracy 0.8861314
+
+
+Step4
+
+Model Comparison
+which model are the best? 
+From The Models Confusion Matrix Comparison and the ROC curve, we can see that the Logistic regression model using 10-fold cross-validation makes the best fit. Accuracy in predicting the 99.3% test data from our 90% train model, so we will use it build the main model to predict GALAXY/STAR
+
+
+ Rebuilt the model Predict GALAXY based on test data 
+  Model Logistic model using full train data with 10-fold CV
+
+The Control  for the CV
+```{r}
+trctrl <- trainControl(method = "cv", number = 10 ) 
+```
+
+
+ The regression with the Control
+```{r}
+logit.full <- train(class ~i + redshift + MJD - class_STAR, 
+                  data = train, 
+                  method = "glm",
+                  trControl=trctrl,
+                  family = "binomial",
+                  preProcess = c("center", "scale"),
+                  tuneLength = 10
+)
+logit.full
+```
+
+```{r}
+data1 <- train
+index1 <- tf1
+boot.logit <- function(data1, index1) {
+  coef(glm(class  ~ i + redshift + MJD - class_STAR, data = data1, family = "binomial", subset = index1)) 
+}
+boot(train, boot.logit, R = 10) 
+
+summary(glm(class ~ i + redshift + MJD - class_STAR, data = train, family = "binomial"))$coef
+
+```
+
+
+predict the test data (test) using the train8 data model with Logistic model
+Accuracy     
+We can see through our result of the final logit model, that the model fits well for our data in general. Compared to the 10-fold logit model we built earlier, the accuracy rate is stable. 
+In terms of the parameters in the model, we can see that redshift has a much larger coefficient than the other two variables i and MJD. Indicates a redshift value based on the increase in wavelength have a more strong impact to the classification result, while i, the near infrared filter in the photometric system, and MJD, Modified Julian Date, used to indicate when a given piece of SDSS data was taken, have relatively smaller impacts to the classification of the two classes, Star and Galaxy. 
+
+```{r}
+logit.probs <- predict(logit.full, test, type = "prob")
+logit.pred <- rep("GALAXY", 8103) 
+logit.pred[logit.probs$STAR > .5] <- "STAR"
+table(logit.pred, test$class)
+
+(5902+2159)/8103
+```
+*Bibliography
+“Correlation Matrix : A Quick Start Guide to Analyze, Format and Visualize a Correlation Matrix Using R Software.” STHDA, http://www.sthda.com/english/wiki/correlation-matrix-a-quick-start-guide-to-analyze-format-and-visualize-a-correlation-matrix-using-r-software. 
+
+“Cosmos Lecture 12.” High Redshift Objects, University of Oregon, http://abyss.uoregon.edu/~js/cosmo/lectures/lec12.html#:~:text=In%20the%201930's%2C%20Edwin%20Hubble,it%20is%20(Hubble's%20law). 
+
