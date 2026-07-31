@@ -64,6 +64,15 @@ export const mockProvider: FlightProvider = {
       const stops = rand() < 0.45 ? 0 : rand() < 0.8 ? 1 : 2;
       const durationMinutes = 90 + stops * 80 + Math.floor(rand() * 240);
 
+      const departHour = Math.floor(rand() * 22);
+      const departMinute = Math.floor(rand() * 60);
+      const departAt = new Date(
+        `${params.departDate}T${String(departHour).padStart(2, "0")}:${String(
+          departMinute
+        ).padStart(2, "0")}:00Z`
+      );
+      const arriveAt = new Date(departAt.getTime() + durationMinutes * 60000);
+
       return {
         id: `mock-${params.origin}-${params.destination}-${i}`,
         provider: "mock",
@@ -76,6 +85,8 @@ export const mockProvider: FlightProvider = {
         currency: "USD",
         stops,
         durationMinutes,
+        departAt: departAt.toISOString(),
+        arriveAt: arriveAt.toISOString(),
         deepLink: `https://www.google.com/travel/flights?q=Flights%20from%20${params.origin}%20to%20${params.destination}%20on%20${params.departDate}`,
       };
     });

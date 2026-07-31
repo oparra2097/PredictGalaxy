@@ -5,6 +5,7 @@ import SearchForm, { SearchValues } from "@/components/SearchForm";
 import FlightResults from "@/components/FlightResults";
 import DealFeed from "@/components/DealFeed";
 import WatchedRoutes, { WatchedRouteWithHistory } from "@/components/WatchedRoutes";
+import SelfTransferSearch from "@/components/SelfTransferSearch";
 import type { ScoredFlightOffer } from "@/lib/scoring";
 import type { DealPost } from "@/lib/scrapers/dealFeeds";
 
@@ -126,6 +127,11 @@ export default function Home() {
             )}
           </>
         )}
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xl font-semibold">Fly via any European hub</h2>
+        <SelfTransferSearch />
       </section>
 
       <section className="flex flex-col gap-4">

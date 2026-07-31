@@ -99,6 +99,7 @@ export const amadeusProvider: FlightProvider = {
     return (data.data || []).map((offer) => {
       const firstItinerary = offer.itineraries[0];
       const firstSegment = firstItinerary.segments[0];
+      const lastSegment = firstItinerary.segments[firstItinerary.segments.length - 1];
       const stops = firstItinerary.segments.length - 1;
 
       return {
@@ -112,6 +113,8 @@ export const amadeusProvider: FlightProvider = {
         price: Math.round(parseFloat(offer.price.total)),
         currency: offer.price.currency,
         stops,
+        departAt: firstSegment.departure.at,
+        arriveAt: lastSegment.arrival.at,
         durationMinutes: parseIsoDurationToMinutes(firstItinerary.duration),
         deepLink: `https://www.google.com/travel/flights?q=Flights%20from%20${params.origin}%20to%20${params.destination}%20on%20${params.departDate}`,
       };

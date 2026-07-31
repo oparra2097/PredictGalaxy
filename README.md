@@ -61,6 +61,41 @@ This is the same underlying mechanism as tools like Going.com or Thrifty
 Traveler: watch a specific search over time and flag when it's genuinely
 unusual, rather than presenting whatever prices happen to be available today.
 
+### Self-transfer via any European hub
+
+"Fly via any European hub" search on the home page does what Kiwi.com calls
+"virtual interlining": instead of one connecting itinerary, it books two
+separate one-way tickets — origin → hub and hub → final destination — which
+can be cheaper and can combine airlines that don't otherwise interline
+(e.g. Turkish Airlines into Athens, then a separate ticket on Icelandair
+out to JFK).
+
+- **`lib/selfTransfer.ts`** — tries each hub in `EUROPEAN_HUBS` (20 major
+  airports), searches origin→hub and hub→destination (both same-day and
+  next-day, to catch overnight connections) via the existing provider
+  search, pairs them by a valid connection window, and ranks hubs by
+  combined price.
+- Connection-time math requires real timestamps, so `FlightOffer` now
+  carries `departAt`/`arriveAt` (both `mock.ts` and `amadeus.ts` populate
+  these — Amadeus from the actual first/last segment times).
+- Minimum connection is set to **3 hours**, not the ~45–90 min minimum
+  connection time (MCT) a single ticket allows — separate tickets mean
+  landside transfer: immigration, baggage reclaim, and a fresh
+  check-in/security run. Max layover is capped at 48h so results don't
+  include multi-day gaps unless that's genuinely what's cheapest.
+- **Real risk, surfaced in the UI, not hidden**: self-transfer has no
+  missed-connection protection. If leg 1 is delayed and you miss leg 2,
+  the airline operating leg 2 owes you nothing — you bought two unrelated
+  tickets. Every result carries that disclaimer. There's also a landside
+  transfer at the hub, which can mean needing a transit/Schengen visa
+  depending on nationality and hub country — not modeled here, worth
+  checking before booking.
+- **API cost with a real provider**: this runs 3 searches per hub × 20 hubs
+  = 60 provider calls per self-transfer search. Fine with the mock
+  provider (instant, local); expensive against a metered API like Amadeus's
+  free tier. Consider trimming `EUROPEAN_HUBS` down once a real provider is
+  wired in, or gating this search behind an explicit rate limit.
+
 ## Getting started
 
 ```bash
