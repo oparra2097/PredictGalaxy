@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import AirportInput from "./AirportInput";
+import { resolveAirportCode } from "@/lib/airports";
 
 interface LegOffer {
   airline: string;
@@ -46,11 +48,28 @@ export default function SelfTransferSearch() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    const originCode = resolveAirportCode(origin);
+    const destCode = resolveAirportCode(destination);
+    if (!originCode || !destCode) {
+      setError(
+        `Couldn't match "${!originCode ? origin : destination}" to an airport — try a city name or 3-letter code.`
+      );
+      return;
+    }
+    setOrigin(originCode);
+    setDestination(destCode);
+
+    setLoading(true);
     setSearched(true);
     try {
-      const params = new URLSearchParams({ origin, destination, departDate, adults: "1" });
+      const params = new URLSearchParams({
+        origin: originCode,
+        destination: destCode,
+        departDate,
+        adults: "1",
+      });
       const res = await fetch(`/api/search/self-transfer?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Search failed");
@@ -73,28 +92,20 @@ export default function SelfTransferSearch() {
         onSubmit={handleSubmit}
         className="grid grid-cols-1 gap-3 rounded-xl bg-deal-panel p-4 sm:grid-cols-4"
       >
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/50">From</span>
-          <input
-            required
-            maxLength={3}
-            placeholder="e.g. IST"
-            value={origin}
-            onChange={(e) => setOrigin(e.target.value.toUpperCase())}
-            className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/50">Final destination</span>
-          <input
-            required
-            maxLength={3}
-            placeholder="e.g. JFK"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value.toUpperCase())}
-            className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-          />
-        </label>
+        <AirportInput
+          required
+          label="From"
+          placeholder="City or code"
+          value={origin}
+          onChange={setOrigin}
+        />
+        <AirportInput
+          required
+          label="Final destination"
+          placeholder="City or code"
+          value={destination}
+          onChange={setDestination}
+        />
         <label className="flex flex-col gap-1">
           <span className="text-xs text-white/50">Depart</span>
           <input

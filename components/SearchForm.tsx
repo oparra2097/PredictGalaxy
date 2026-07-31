@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import AirportInput from "./AirportInput";
+import { resolveAirportCode } from "@/lib/airports";
 
 export interface SearchValues {
   origin: string;
@@ -20,6 +22,7 @@ export default function SearchForm({
   loading: boolean;
 }) {
   const [tripType, setTripType] = useState<TripType>("roundtrip");
+  const [formError, setFormError] = useState<string | null>(null);
   const [values, setValues] = useState<SearchValues>({
     origin: "",
     destination: "",
@@ -28,14 +31,31 @@ export default function SearchForm({
     adults: 1,
   });
 
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+
+    const origin = resolveAirportCode(values.origin);
+    const destination = resolveAirportCode(values.destination);
+    if (!origin || !destination) {
+      setFormError(
+        `Couldn't match "${!origin ? values.origin : values.destination}" to an airport — try a city name or 3-letter code.`
+      );
+      return;
+    }
+
+    // Snap the inputs to the resolved codes so what runs is what's shown.
+    setValues((v) => ({ ...v, origin, destination }));
+    onSearch({
+      ...values,
+      origin,
+      destination,
+      returnDate: tripType === "oneway" ? "" : values.returnDate,
+    });
+  }
+
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSearch(tripType === "oneway" ? { ...values, returnDate: "" } : values);
-      }}
-      className="flex flex-col gap-3 rounded-xl bg-deal-panel p-4"
-    >
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl bg-deal-panel p-4">
       <div className="flex gap-1 self-start rounded-lg bg-deal-bg p-1">
         {(
           [
@@ -59,28 +79,20 @@ export default function SearchForm({
       </div>
 
       <div className={`grid grid-cols-1 gap-3 ${tripType === "roundtrip" ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/50">From</span>
-          <input
-            required
-            maxLength={3}
-            placeholder="e.g. JFK"
-            value={values.origin}
-            onChange={(e) => setValues({ ...values, origin: e.target.value.toUpperCase() })}
-            className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/50">To</span>
-          <input
-            required
-            maxLength={3}
-            placeholder="e.g. LIS"
-            value={values.destination}
-            onChange={(e) => setValues({ ...values, destination: e.target.value.toUpperCase() })}
-            className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-          />
-        </label>
+        <AirportInput
+          required
+          label="From"
+          placeholder="City or code"
+          value={values.origin}
+          onChange={(origin) => setValues({ ...values, origin })}
+        />
+        <AirportInput
+          required
+          label="To"
+          placeholder="City or code"
+          value={values.destination}
+          onChange={(destination) => setValues({ ...values, destination })}
+        />
         <label className="flex flex-col gap-1">
           <span className="text-xs text-white/50">Depart</span>
           <input
@@ -110,6 +122,8 @@ export default function SearchForm({
           {loading ? "Searching…" : "Find deals"}
         </button>
       </div>
+
+      {formError && <p className="text-sm text-red-400">{formError}</p>}
     </form>
   );
 }

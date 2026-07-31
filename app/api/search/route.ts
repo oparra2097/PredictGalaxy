@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchAllProviders } from "@/lib/providers";
 import { scoreOffers } from "@/lib/scoring";
+import { findDealsForRoute } from "@/lib/scrapers/dealFeeds";
+import type { DealPost } from "@/lib/scrapers/dealFeeds";
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
@@ -27,5 +29,14 @@ export async function GET(req: NextRequest) {
 
   const scored = scoreOffers(offers);
 
-  return NextResponse.json({ offers: scored, errors });
+  // Best-effort deal-blog cross-check — a feed outage must never take the
+  // core search down with it.
+  let relatedDeals: DealPost[] = [];
+  try {
+    relatedDeals = await findDealsForRoute(origin, destination);
+  } catch {
+    // ignore — section simply won't render
+  }
+
+  return NextResponse.json({ offers: scored, relatedDeals, errors });
 }

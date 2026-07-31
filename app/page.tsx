@@ -11,6 +11,7 @@ import type { DealPost } from "@/lib/scrapers/dealFeeds";
 
 export default function Home() {
   const [offers, setOffers] = useState<ScoredFlightOffer[]>([]);
+  const [relatedDeals, setRelatedDeals] = useState<DealPost[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -56,6 +57,7 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Search failed");
       setOffers(data.offers || []);
+      setRelatedDeals(data.relatedDeals || []);
       setLastSearch(values);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Search failed");
@@ -123,6 +125,14 @@ export default function Home() {
                 {trackedMessage && (
                   <span className="text-sm text-deal-good">{trackedMessage}</span>
                 )}
+              </div>
+            )}
+            {relatedDeals.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <h3 className="text-lg font-semibold">
+                  Deal-blog mentions for this trip
+                </h3>
+                <DealFeed deals={relatedDeals} />
               </div>
             )}
           </>

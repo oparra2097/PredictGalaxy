@@ -51,6 +51,9 @@ function extractRoute(text: string): string | null {
 }
 
 const parser = new Parser({
+  // A slow blog must never stall a flight search now that feeds are also
+  // scanned inline with /api/search.
+  timeout: 5000,
   headers: {
     "User-Agent":
       "Mozilla/5.0 (compatible; OdysseySkyBot/1.0; +https://odysseysky.app/bot)",
@@ -78,10 +81,22 @@ async function fetchFeed(source: string, url: string): Promise<DealPost[]> {
   });
 }
 
-export async function scanDealFeeds(): Promise<{
+interface ScanResult {
   deals: DealPost[];
   errors: { source: string; message: string }[];
-}> {
+}
+
+// Feeds get hit from /api/deals AND from every /api/search now, so cache
+// the scan in-process — 10 RSS fetches per page load would hammer the
+// blogs and slow every search.
+let scanCache: { at: number; result: ScanResult } | null = null;
+const SCAN_CACHE_TTL_MS = 15 * 60 * 1000;
+
+export async function scanDealFeeds(): Promise<ScanResult> {
+  if (scanCache && Date.now() - scanCache.at < SCAN_CACHE_TTL_MS) {
+    return scanCache.result;
+  }
+
   const errors: { source: string; message: string }[] = [];
 
   const results = await Promise.all(
@@ -102,5 +117,48 @@ export async function scanDealFeeds(): Promise<{
     .flat()
     .sort((a, b) => (b.publishedAt || "").localeCompare(a.publishedAt || ""));
 
-  return { deals, errors };
+  const result = { deals, errors };
+  scanCache = { at: Date.now(), result };
+  return result;
+}
+
+/**
+ * Search-time cross-check: surfaces recent deal-blog posts that plausibly
+ * mention the searched route. Matches on extracted IATA route first, then
+ * word-boundary city-name mentions (destination-focused — a deal post is
+ * about where you're going, not where you start).
+ */
+export async function findDealsForRoute(
+  origin: string,
+  destination: string
+): Promise<DealPost[]> {
+  const { cityForCode } = await import("../airports");
+  const { deals } = await scanDealFeeds();
+
+  const o = origin.toUpperCase();
+  const d = destination.toUpperCase();
+  const originCity = cityForCode(o);
+  const destCity = cityForCode(d);
+
+  const cityMentioned = (text: string, city: string | null) => {
+    if (!city || city.length < 4) return false;
+    const escaped = city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, "i").test(text);
+  };
+
+  const scored = deals
+    .map((deal) => {
+      const text = `${deal.title} ${deal.summary}`;
+      let score = 0;
+      if (deal.route?.includes(o) && deal.route?.includes(d)) score = 3;
+      else if (deal.route?.includes(d) || cityMentioned(text, destCity)) score = 2;
+      else if (deal.route?.includes(o) || cityMentioned(text, originCity)) score = 1;
+      return { deal, score };
+    })
+    .filter((s) => s.score >= 2);
+
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((s) => s.deal);
 }
