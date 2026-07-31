@@ -1,8 +1,19 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+// Serverless platforms (Vercel included) ship a read-only filesystem
+// outside of os.tmpdir() — writing under process.cwd() throws there. Using
+// tmpdir() everywhere keeps one code path instead of branching on
+// environment, at the cost of the local dev DB living outside the repo
+// (it's gitignored anyway, so that's not a real downside).
+//
+// Note this doesn't make persistence *work* on serverless: tmpdir() is
+// still wiped between deploys and isn't guaranteed to survive between
+// invocations on a cold instance. It just stops it from crashing. See
+// README's "hosted database" note for the real fix.
+const DATA_DIR = path.join(os.tmpdir(), "odysseysky");
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
