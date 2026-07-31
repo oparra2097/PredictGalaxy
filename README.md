@@ -1,4 +1,4 @@
-# Fareflock — Flight Deal Aggregator
+# OdysseySky — Flight Deal Aggregator
 
 An ad-free flight deal scanner: it queries flight-offer APIs directly and
 scans independent deal-blog RSS feeds, then scores everything by price

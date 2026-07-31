@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Fareflock — Flight Deal Aggregator",
+  title: "OdysseySky — Flight Deal Aggregator",
   description:
     "Ad-free flight deal scanning across airline APIs and independent deal blogs.",
 };

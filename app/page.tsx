@@ -50,7 +50,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-8 px-4 py-10">
       <header>
-        <h1 className="text-3xl font-bold">Fareflock</h1>
+        <h1 className="text-3xl font-bold">OdysseySky</h1>
         <p className="mt-1 text-white/50">
           Ad-free flight deal scanning across airline data and independent deal blogs.
         </p>

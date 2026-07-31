@@ -38,7 +38,7 @@ function extractRoute(text: string): string | null {
 const parser = new Parser({
   headers: {
     "User-Agent":
-      "Mozilla/5.0 (compatible; FareflockBot/1.0; +https://fareflock.app/bot)",
+      "Mozilla/5.0 (compatible; OdysseySkyBot/1.0; +https://odysseysky.app/bot)",
     Accept: "application/rss+xml, application/xml, text/xml, */*",
   },
 });
