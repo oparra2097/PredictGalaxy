@@ -28,6 +28,60 @@ interface TravelpayoutsItem {
   link?: string;
 }
 
+export interface FlexDatePrice {
+  date: string;
+  price: number;
+}
+
+/**
+ * Cheapest cached fare per day across a month (departure_at accepts
+ * YYYY-MM). This is the antidote to the cached API's thin results for any
+ * single exact date — and "cheapest day nearby" is where deals actually
+ * live anyway.
+ */
+export async function fetchMonthCheapest(
+  origin: string,
+  destination: string,
+  month: string, // YYYY-MM
+  oneWay: boolean
+): Promise<FlexDatePrice[]> {
+  const token = process.env.TRAVELPAYOUTS_TOKEN;
+  if (!token) return [];
+
+  const query = new URLSearchParams({
+    origin: origin.toUpperCase(),
+    destination: destination.toUpperCase(),
+    departure_at: month,
+    currency: "usd",
+    sorting: "price",
+    limit: "100",
+    one_way: oneWay ? "true" : "false",
+    token,
+  });
+
+  const res = await fetch(`${API_BASE}?${query.toString()}`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Travelpayouts month lookup failed: ${res.status}`);
+  }
+
+  const body = (await res.json()) as { success: boolean; data?: TravelpayoutsItem[] };
+  if (!body.success || !Array.isArray(body.data)) return [];
+
+  const cheapestByDay = new Map<string, number>();
+  for (const item of body.data) {
+    const day = (item.departure_at || "").slice(0, 10);
+    if (!day) continue;
+    const existing = cheapestByDay.get(day);
+    if (existing === undefined || item.price < existing) {
+      cheapestByDay.set(day, Math.round(item.price));
+    }
+  }
+
+  return [...cheapestByDay.entries()]
+    .map(([date, price]) => ({ date, price }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export const travelpayoutsProvider: FlightProvider = {
   name: "travelpayouts",
   isConfigured() {

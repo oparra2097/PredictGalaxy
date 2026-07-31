@@ -12,6 +12,7 @@ import type { DealPost } from "@/lib/scrapers/dealFeeds";
 export default function Home() {
   const [offers, setOffers] = useState<ScoredFlightOffer[]>([]);
   const [relatedDeals, setRelatedDeals] = useState<DealPost[]>([]);
+  const [flexDates, setFlexDates] = useState<{ date: string; price: number }[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -58,6 +59,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || "Search failed");
       setOffers(data.offers || []);
       setRelatedDeals(data.relatedDeals || []);
+      setFlexDates(data.flexDates || []);
       setLastSearch(values);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Search failed");
@@ -112,6 +114,38 @@ export default function Home() {
         {searchError && <p className="text-red-400">{searchError}</p>}
         {hasSearched && !searchLoading && (
           <>
+            {flexDates.length > 1 && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-white/50">
+                  Cheapest fares nearby this month — tap a day to search it
+                </span>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {flexDates.map(({ date, price }) => {
+                    const active = lastSearch?.departDate === date;
+                    const day = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    });
+                    return (
+                      <button
+                        key={date}
+                        onClick={() =>
+                          lastSearch && handleSearch({ ...lastSearch, departDate: date })
+                        }
+                        className={`flex shrink-0 flex-col items-center rounded-lg px-3 py-2 text-sm transition ${
+                          active
+                            ? "bg-deal-accent text-deal-bg"
+                            : "bg-deal-panel text-white/70 hover:bg-white/10"
+                        }`}
+                      >
+                        <span className="text-xs">{day}</span>
+                        <span className="font-semibold">${price}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <FlightResults offers={offers} />
             {offers.length > 0 && (
               <div className="flex items-center gap-3">

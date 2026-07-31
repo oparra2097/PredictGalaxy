@@ -3,6 +3,11 @@ import { searchAllProviders } from "@/lib/providers";
 import { scoreOffers } from "@/lib/scoring";
 import { findDealsForRoute } from "@/lib/scrapers/dealFeeds";
 import type { DealPost } from "@/lib/scrapers/dealFeeds";
+import {
+  fetchMonthCheapest,
+  travelpayoutsProvider,
+  type FlexDatePrice,
+} from "@/lib/providers/travelpayouts";
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
@@ -29,8 +34,8 @@ export async function GET(req: NextRequest) {
 
   const scored = scoreOffers(offers);
 
-  // Best-effort deal-blog cross-check — a feed outage must never take the
-  // core search down with it.
+  // Best-effort extras — neither a feed outage nor a flex-date lookup
+  // failure may take the core search down with it.
   let relatedDeals: DealPost[] = [];
   try {
     relatedDeals = await findDealsForRoute(origin, destination);
@@ -38,5 +43,21 @@ export async function GET(req: NextRequest) {
     // ignore — section simply won't render
   }
 
-  return NextResponse.json({ offers: scored, relatedDeals, errors });
+  // Cached-fare APIs are thin for any single exact date, so also return the
+  // cheapest fare per day for the searched month when Travelpayouts is on.
+  let flexDates: FlexDatePrice[] = [];
+  if (travelpayoutsProvider.isConfigured()) {
+    try {
+      flexDates = await fetchMonthCheapest(
+        origin,
+        destination,
+        departDate.slice(0, 7),
+        !returnDate
+      );
+    } catch {
+      // ignore — strip simply won't render
+    }
+  }
+
+  return NextResponse.json({ offers: scored, relatedDeals, flexDates, errors });
 }
