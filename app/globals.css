@@ -2,7 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tells Safari/WebKit to render native form controls (date pickers
+   especially) for a dark page — without this, iOS draws date inputs
+   assuming a light background and they appear blank. */
+:root {
+  color-scheme: dark;
+}
+
 body {
   background-color: #0b1220;
+  color: #e5edf7;
+}
+
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 2.5rem;
+}
+
+/* iOS renders the picked date via this pseudo-element; it centers the text
+   and can use an invisible color unless set explicitly. */
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
   color: #e5edf7;
 }

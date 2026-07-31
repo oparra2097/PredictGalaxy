@@ -73,33 +73,42 @@ export default function SelfTransferSearch() {
         onSubmit={handleSubmit}
         className="grid grid-cols-1 gap-3 rounded-xl bg-deal-panel p-4 sm:grid-cols-4"
       >
-        <input
-          required
-          maxLength={3}
-          placeholder="From (e.g. IST)"
-          value={origin}
-          onChange={(e) => setOrigin(e.target.value.toUpperCase())}
-          className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-        />
-        <input
-          required
-          maxLength={3}
-          placeholder="Final destination (e.g. JFK)"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value.toUpperCase())}
-          className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-        />
-        <input
-          required
-          type="date"
-          value={departDate}
-          onChange={(e) => setDepartDate(e.target.value)}
-          className="rounded-md bg-deal-bg px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-        />
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/50">From</span>
+          <input
+            required
+            maxLength={3}
+            placeholder="e.g. IST"
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value.toUpperCase())}
+            className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/50">Final destination</span>
+          <input
+            required
+            maxLength={3}
+            placeholder="e.g. JFK"
+            value={destination}
+            onChange={(e) => setDestination(e.target.value.toUpperCase())}
+            className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/50">Depart</span>
+          <input
+            required
+            type="date"
+            value={departDate}
+            onChange={(e) => setDepartDate(e.target.value)}
+            className="w-full rounded-md bg-deal-bg px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-deal-accent"
+          />
+        </label>
         <button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-deal-accent px-4 py-2 font-medium text-deal-bg transition hover:brightness-110 disabled:opacity-50"
+          className="self-end rounded-md bg-deal-accent px-4 py-2 font-medium text-deal-bg transition hover:brightness-110 disabled:opacity-50"
         >
           {loading ? "Searching…" : "Find hub combos"}
         </button>

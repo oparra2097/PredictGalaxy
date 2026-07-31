@@ -5,10 +5,13 @@ import type { FlightOffer, FlightProvider, FlightSearchParams } from "./types";
 const ALL_PROVIDERS: FlightProvider[] = [amadeusProvider, mockProvider];
 
 export function getActiveProviders(): FlightProvider[] {
-  const configured = ALL_PROVIDERS.filter((p) => p.isConfigured());
-  // Always keep the mock provider so the app works with zero setup,
-  // unless a real provider is configured and someone wants real-only results.
-  return configured.length > 0 ? configured : [mockProvider];
+  // Mock reports itself as always configured, so it must be excluded here
+  // or it would blend fake fares into real results the moment a real
+  // provider comes online. It exists purely as the zero-setup fallback.
+  const real = ALL_PROVIDERS.filter(
+    (p) => p.name !== mockProvider.name && p.isConfigured()
+  );
+  return real.length > 0 ? real : [mockProvider];
 }
 
 export async function searchAllProviders(

@@ -59,42 +59,53 @@ export default function SearchForm({
       </div>
 
       <div className={`grid grid-cols-1 gap-3 ${tripType === "roundtrip" ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
-        <input
-          required
-          maxLength={3}
-          placeholder="From (e.g. JFK)"
-          value={values.origin}
-          onChange={(e) => setValues({ ...values, origin: e.target.value.toUpperCase() })}
-          className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-        />
-        <input
-          required
-          maxLength={3}
-          placeholder="To (e.g. LIS)"
-          value={values.destination}
-          onChange={(e) => setValues({ ...values, destination: e.target.value.toUpperCase() })}
-          className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-        />
-        <input
-          required
-          type="date"
-          value={values.departDate}
-          onChange={(e) => setValues({ ...values, departDate: e.target.value })}
-          className="rounded-md bg-deal-bg px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-deal-accent"
-        />
-        {tripType === "roundtrip" && (
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/50">From</span>
           <input
-            type="date"
-            placeholder="Return"
-            value={values.returnDate}
-            onChange={(e) => setValues({ ...values, returnDate: e.target.value })}
-            className="rounded-md bg-deal-bg px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-deal-accent"
+            required
+            maxLength={3}
+            placeholder="e.g. JFK"
+            value={values.origin}
+            onChange={(e) => setValues({ ...values, origin: e.target.value.toUpperCase() })}
+            className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
           />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/50">To</span>
+          <input
+            required
+            maxLength={3}
+            placeholder="e.g. LIS"
+            value={values.destination}
+            onChange={(e) => setValues({ ...values, destination: e.target.value.toUpperCase() })}
+            className="rounded-md bg-deal-bg px-3 py-2 uppercase tracking-wide outline-none ring-1 ring-white/10 focus:ring-deal-accent"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/50">Depart</span>
+          <input
+            required
+            type="date"
+            value={values.departDate}
+            onChange={(e) => setValues({ ...values, departDate: e.target.value })}
+            className="w-full rounded-md bg-deal-bg px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-deal-accent"
+          />
+        </label>
+        {tripType === "roundtrip" && (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-white/50">Return</span>
+            <input
+              type="date"
+              value={values.returnDate}
+              onChange={(e) => setValues({ ...values, returnDate: e.target.value })}
+              className="w-full rounded-md bg-deal-bg px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-deal-accent"
+            />
+          </label>
         )}
         <button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-deal-accent px-4 py-2 font-medium text-deal-bg transition hover:brightness-110 disabled:opacity-50"
+          className="self-end rounded-md bg-deal-accent px-4 py-2 font-medium text-deal-bg transition hover:brightness-110 disabled:opacity-50"
         >
           {loading ? "Searching…" : "Find deals"}
         </button>
