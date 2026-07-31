@@ -25,6 +25,24 @@ function seededRandom(seed: string) {
 }
 
 /**
+ * A route's "true" base price stays stable (seeded by route+date only), but
+ * a day-seeded market factor nudges it up/down like real fares do, with an
+ * occasional larger drop to simulate a mistake fare. This is what lets
+ * repeated /api/collect snapshots build a history with real variance for
+ * the anomaly detector to evaluate, instead of an identical number forever.
+ */
+function dailyMarketFactor(seedKey: string): number {
+  const dayKey = new Date().toISOString().slice(0, 10);
+  const rand = seededRandom(`${seedKey}-${dayKey}`);
+  const roll = rand();
+  if (roll < 0.08) {
+    // Simulated mistake fare / flash sale.
+    return 0.45 + rand() * 0.2;
+  }
+  return 0.9 + rand() * 0.2;
+}
+
+/**
  * Deterministic mock provider so the app is usable with zero API keys.
  * Swap in a real provider (see amadeus.ts) once you have credentials.
  */
@@ -34,10 +52,9 @@ export const mockProvider: FlightProvider = {
     return true;
   },
   async search(params: FlightSearchParams): Promise<FlightOffer[]> {
-    const rand = seededRandom(
-      `${params.origin}-${params.destination}-${params.departDate}`
-    );
-    const basePrice = 120 + rand() * 550;
+    const routeKey = `${params.origin}-${params.destination}-${params.departDate}`;
+    const rand = seededRandom(routeKey);
+    const basePrice = (120 + rand() * 550) * dailyMarketFactor(routeKey);
     const count = 6 + Math.floor(rand() * 5);
 
     return Array.from({ length: count }, (_, i) => {

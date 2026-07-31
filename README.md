@@ -32,6 +32,35 @@ placements.
 - **`app/api/deals/route.ts`** — `GET /api/deals` returns the latest scanned
   deal-blog posts, cached 15 minutes.
 
+### Price-history anomaly detection
+
+Point-in-time results (what the search tab shows) are inherently a Kayak-style
+metasearch: whatever partners report right now, sorted. A real deal is
+relative to a route's *own* history — the same $400 fare is unremarkable on
+one route and a mistake fare on another — so a second engine tracks that:
+
+- **`lib/db.ts`** — a local SQLite database (`data/odysseysky.db`, gitignored)
+  with two tables: `watched_routes` and `price_snapshots`.
+- **`lib/priceHistory.ts`** — CRUD for watched routes and their price
+  snapshots.
+- **`lib/anomaly.ts`** — flags a new price as a real deal only when it's a
+  statistical outlier vs. that route's prior snapshots (≥20% below the
+  median, or a z-score ≤ -1.5), and only once at least 3 snapshots exist so
+  a single noisy reading can't trigger a false "deal."
+- **`app/api/routes`** (GET/POST) and **`app/api/routes/[id]`** (DELETE) —
+  manage which routes are being tracked.
+- **`app/api/collect`** (POST) — snapshots the current cheapest price for
+  every tracked route and records it. Call this on a schedule (Vercel Cron,
+  a GitHub Actions cron job, or any external scheduler hitting the endpoint
+  hourly/daily) so history actually accumulates — a single call only adds
+  one data point per route. In the UI, search a route, click "Track this
+  route," then use "Collect prices now" to add snapshots manually while
+  testing.
+
+This is the same underlying mechanism as tools like Going.com or Thrifty
+Traveler: watch a specific search over time and flag when it's genuinely
+unusual, rather than presenting whatever prices happen to be available today.
+
 ## Getting started
 
 ```bash
@@ -55,16 +84,27 @@ outbound internet access (Vercel, your own server, etc.).
 ## Next steps to grow this into a real product
 
 1. **Add more real providers** (Kiwi Tequila has a generous free tier,
-   Duffel is developer-friendly) so results aren't Amadeus-only.
-2. **Persist and diff prices over time** (e.g. a cron job + database) to
-   detect genuine price drops/error fares instead of just point-in-time
-   comparisons.
-3. **Add more deal-blog sources** and tighten the price/route extraction
+   Duffel is developer-friendly) so results aren't Amadeus-only, and so
+   `/api/collect` snapshots are based on real prices rather than mock data.
+2. **Move price history to a hosted database** (Postgres via Neon/Supabase)
+   before deploying anywhere serverless — local SQLite works for `npm run
+   dev`, but a platform like Vercel gives function instances an ephemeral
+   filesystem, so `data/odysseysky.db` won't persist across deploys or even
+   across invocations.
+3. **Schedule `/api/collect`** with Vercel Cron or a GitHub Actions cron job
+   once deployed, so tracked routes actually build up history instead of
+   only collecting when someone happens to click the button.
+4. **Add more deal-blog sources** and tighten the price/route extraction
    (an LLM call per post is more robust than regex for messy titles).
-4. **Add flexible-date search** ("cheapest day in the next 3 months") since
+5. **Add flexible-date search** ("cheapest day in the next 3 months") since
    that's where most real deals live.
-5. **Alerts**: let users save a route and get notified when a new post or
-   API result beats their target price.
+6. **Notifications**: currently you have to open the app to see a flagged
+   deal — wire up email/push when `/api/collect` finds a new anomaly.
+7. **Targeted scraping of specific non-partner sites**, if/when you want to
+   go beyond API + RSS coverage — deliberately deferred for now since it's
+   ToS/legal-risk territory and an ongoing anti-bot maintenance burden, not
+   a one-time build. Worth revisiting with specific named sites rather than
+   scraping broadly.
 
 ## Security notes
 
