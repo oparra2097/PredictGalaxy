@@ -10,6 +10,6 @@ export async function DELETE(
   if (!Number.isFinite(id)) {
     return NextResponse.json({ error: "Invalid route id" }, { status: 400 });
   }
-  deleteWatchedRoute(id);
+  await deleteWatchedRoute(id);
   return NextResponse.json({ ok: true });
 }

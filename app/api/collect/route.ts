@@ -10,7 +10,7 @@ import { getSnapshots, listWatchedRoutes, recordSnapshot } from "@/lib/priceHist
  * A single call adds one data point per route.
  */
 async function collect() {
-  const routes = listWatchedRoutes();
+  const routes = await listWatchedRoutes();
   const results = [];
 
   for (const route of routes) {
@@ -29,10 +29,10 @@ async function collect() {
       }
 
       const cheapest = offers.reduce((min, o) => (o.price < min.price ? o : min));
-      const priorHistory = getSnapshots(route.id).map((s) => s.price);
+      const priorHistory = (await getSnapshots(route.id)).map((s) => s.price);
       const anomaly = detectAnomaly(priorHistory, cheapest.price);
 
-      recordSnapshot(route.id, cheapest.price, cheapest.currency, cheapest.airline);
+      await recordSnapshot(route.id, cheapest.price, cheapest.currency, cheapest.airline);
 
       results.push({
         routeId: route.id,

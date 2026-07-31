@@ -1,9 +1,15 @@
 import { amadeusProvider } from "./amadeus";
 import { travelpayoutsProvider } from "./travelpayouts";
+import { serpapiProvider } from "./serpapi";
 import { mockProvider } from "./mock";
 import type { FlightOffer, FlightProvider, FlightSearchParams } from "./types";
 
-const ALL_PROVIDERS: FlightProvider[] = [travelpayoutsProvider, amadeusProvider, mockProvider];
+const ALL_PROVIDERS: FlightProvider[] = [
+  travelpayoutsProvider,
+  serpapiProvider,
+  amadeusProvider,
+  mockProvider,
+];
 
 export function getActiveProviders(): FlightProvider[] {
   // Mock reports itself as always configured, so it must be excluded here

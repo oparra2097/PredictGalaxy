@@ -13,6 +13,13 @@ export default function Home() {
   const [offers, setOffers] = useState<ScoredFlightOffer[]>([]);
   const [relatedDeals, setRelatedDeals] = useState<DealPost[]>([]);
   const [flexDates, setFlexDates] = useState<{ date: string; price: number }[]>([]);
+  const [spread, setSpread] = useState<{
+    provider: string;
+    price: number;
+    otherProvider: string;
+    otherPrice: number;
+    percent: number;
+  } | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -60,6 +67,7 @@ export default function Home() {
       setOffers(data.offers || []);
       setRelatedDeals(data.relatedDeals || []);
       setFlexDates(data.flexDates || []);
+      setSpread(data.spread || null);
       setLastSearch(values);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Search failed");
@@ -114,6 +122,20 @@ export default function Home() {
         {searchError && <p className="text-red-400">{searchError}</p>}
         {hasSearched && !searchLoading && (
           <>
+            {spread && (
+              <div className="rounded-lg border border-deal-good/40 bg-deal-good/10 p-3 text-sm">
+                <span className="font-semibold text-deal-good">
+                  Seller-spread deal:
+                </span>{" "}
+                <span className="text-white/80">
+                  {spread.provider} has this trip at ${spread.price} —{" "}
+                  {Math.round(spread.percent * 100)}% below {spread.otherProvider}
+                  &apos;s cheapest (${spread.otherPrice}). Big gaps like this are
+                  usually consolidator fares: real tickets, but changes and
+                  refunds go through the seller, not the airline.
+                </span>
+              </div>
+            )}
             {flexDates.length > 1 && (
               <div className="flex flex-col gap-2">
                 <span className="text-sm text-white/50">

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { addWatchedRoute, listWatchedRoutesWithHistory } from "@/lib/priceHistory";
 
 export async function GET() {
-  const routes = listWatchedRoutesWithHistory();
+  const routes = await listWatchedRoutesWithHistory();
   return NextResponse.json({ routes });
 }
 
@@ -17,6 +17,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const route = addWatchedRoute(origin, destination, departDate, returnDate || undefined);
+  const route = await addWatchedRoute(origin, destination, departDate, returnDate || undefined);
   return NextResponse.json({ route });
 }
