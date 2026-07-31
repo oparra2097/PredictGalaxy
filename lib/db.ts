@@ -11,6 +11,11 @@ const db = new Database(path.join(DATA_DIR, "odysseysky.db"));
 db.pragma("journal_mode = WAL");
 // SQLite ignores ON DELETE CASCADE below unless this is set per-connection.
 db.pragma("foreign_keys = ON");
+// Next.js's build step evaluates route modules across several workers at
+// once, each opening its own connection to this same file — without a busy
+// timeout, the CREATE TABLE statements below race and throw SQLITE_BUSY
+// instead of one connection just waiting its turn.
+db.pragma("busy_timeout = 5000");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS watched_routes (

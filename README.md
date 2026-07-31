@@ -5,6 +5,10 @@ scans independent deal-blog RSS feeds, then scores everything by price
 relative to the route so the best deals surface first — no sponsored
 placements.
 
+This is the backend + web app. There's also a native mobile client in
+[`mobile/`](./mobile) (React Native / Expo) that talks to the same API —
+see `mobile/README.md` to run it on your phone via Expo Go.
+
 ## How it works
 
 - **`lib/providers/`** — a small provider interface (`FlightProvider`).
