@@ -4,12 +4,12 @@ import { detectAnomaly } from "@/lib/anomaly";
 import { getSnapshots, listWatchedRoutes, recordSnapshot } from "@/lib/priceHistory";
 
 /**
- * Snapshots the current cheapest price for every watched route. Intended to
- * be called on a schedule (e.g. Vercel Cron or a GitHub Actions cron hitting
- * this endpoint hourly) so price history builds up over time — a single
- * call only adds one data point per route.
+ * Snapshots the current cheapest price for every watched route. Called on a
+ * schedule (vercel.json crons — Vercel invokes cron paths with GET, hence
+ * the GET export) and manually from the UI's "Collect prices now" (POST).
+ * A single call adds one data point per route.
  */
-export async function POST() {
+async function collect() {
   const routes = listWatchedRoutes();
   const results = [];
 
@@ -51,4 +51,12 @@ export async function POST() {
   }
 
   return NextResponse.json({ collected: results.length, results });
+}
+
+export async function GET() {
+  return collect();
+}
+
+export async function POST() {
+  return collect();
 }
