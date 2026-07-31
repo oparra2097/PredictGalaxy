@@ -14,14 +14,21 @@ see `mobile/README.md` to run it on your phone via Expo Go.
 - **`lib/providers/`** — a small provider interface (`FlightProvider`).
   - `mock.ts`: deterministic, realistic sample offers. Works with zero
     setup so you can run the app immediately.
-  - `amadeus.ts`: real flight-offer search via the [Amadeus Self-Service
-    API](https://developers.amadeus.com/register) (free test tier). Add
-    credentials in `.env.local` (see `.env.example`) to switch from mock to
-    real data automatically — `lib/providers/index.ts` prefers any
-    configured real provider and falls back to mock otherwise.
-  - Add another provider (Kiwi Tequila, Duffel, Skyscanner via RapidAPI,
-    etc.) by implementing the same `FlightProvider` interface and
-    registering it in `lib/providers/index.ts`.
+  - `travelpayouts.ts` (recommended): real cached prices from Aviasales
+    search data via [Travelpayouts](https://www.travelpayouts.com) — free,
+    instant self-serve signup, and booking links can carry your affiliate
+    marker (the natural revenue model for this product). Cached means a
+    price is what someone recently saw, not a live quote — right tradeoff
+    for a deal scanner, but worth re-verifying at booking.
+  - `amadeus.ts`: live flight-offer search via Amadeus. As of mid-2026 new
+    Amadeus API access is sales-gated (the free Self-Service tier was
+    retired), so this is only useful if you already hold credentials.
+  - Set either provider's env vars (see `.env.example`) to switch off mock
+    data automatically — `lib/providers/index.ts` runs every configured
+    real provider and only falls back to mock when none is set up.
+  - Add another provider (Duffel, etc.) by implementing the same
+    `FlightProvider` interface and registering it in
+    `lib/providers/index.ts`.
 - **`lib/scrapers/dealFeeds.ts`** — pulls the public RSS feeds that
   independent flight-deal blogs (The Flight Deal, Secret Flying, Fly4Free)
   already publish for syndication, and extracts price/route hints from each
