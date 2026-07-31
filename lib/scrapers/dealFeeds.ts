@@ -12,14 +12,29 @@ export interface DealPost {
 }
 
 /**
- * Independent flight-deal blogs that publish public RSS feeds. This reads
- * feeds the sites intentionally syndicate, not screen-scraped HTML — the
- * same content their own subscribers get.
+ * Independent flight-deal and travel blogs that publish public RSS feeds.
+ * This reads feeds the sites intentionally syndicate, not screen-scraped
+ * HTML — the same content their own subscribers get. Broader than pure
+ * "deal" blogs on purpose (points/travel blogs post mistake fares too);
+ * scoring and the price/route regex do the filtering downstream.
+ *
+ * These URLs follow each site's standard WordPress /feed/ convention but
+ * are NOT verified live — this sandbox's network policy blocks outbound
+ * requests to arbitrary domains (see README). Run locally or deployed and
+ * check the `errors` array this module returns; report back any dead URLs
+ * so they can be fixed.
  */
 const DEAL_FEEDS: { source: string; url: string }[] = [
   { source: "The Flight Deal", url: "https://www.theflightdeal.com/feed/" },
   { source: "Secret Flying", url: "https://www.secretflying.com/feed/" },
   { source: "Fly4Free", url: "https://www.fly4free.com/feed/" },
+  { source: "Thrifty Traveler", url: "https://thriftytraveler.com/feed/" },
+  { source: "God Save The Points", url: "https://www.godsavethepoints.com/feed/" },
+  { source: "Live and Let's Fly", url: "https://liveandletsfly.com/feed/" },
+  { source: "One Mile at a Time", url: "https://onemileatatime.com/feed/" },
+  { source: "The Points Guy", url: "https://thepointsguy.com/feed/" },
+  { source: "Johnny Jet", url: "https://johnnyjet.com/feed/" },
+  { source: "Map Happy", url: "https://maphappy.org/feed/" },
 ];
 
 const PRICE_RE = /\$\s?(\d{2,4})/;

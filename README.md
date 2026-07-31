@@ -81,6 +81,11 @@ implemented and degrades gracefully (empty list, no crash) when feeds are
 unreachable; it will pull live posts once deployed somewhere with normal
 outbound internet access (Vercel, your own server, etc.).
 
+This also means the 10 feed URLs in `lib/scrapers/dealFeeds.ts` are
+best-effort (standard WordPress `/feed/` convention) and unverified — check
+the `errors` array `/api/deals` returns after you run it somewhere with
+real network access, and report back any that 404 so they can be fixed.
+
 ## Next steps to grow this into a real product
 
 1. **Add more real providers** (Kiwi Tequila has a generous free tier,
